@@ -14,6 +14,9 @@ use Application\IndexBundle\Document;
 class IndexCommand extends Command{
 
 	protected $dm = null;
+	protected $project;
+	protected $directory;
+
     protected function configure()
     {
         parent::configure();
@@ -40,22 +43,22 @@ class IndexCommand extends Command{
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-	$directory = $input->getArgument('directory');
-	$project = $input->getArgument('project');
+	$this->directory = $input->getArgument('directory');
+	$this->project = $input->getArgument('project');
 
-	if(is_dir($directory) == false || is_readable($directory) == false){
-		throw new \Exception("This directory does not exist or is unreadable: " . $directory);
+	if(is_dir($this->directory) == false || is_readable($this->directory) == false){
+		throw new \Exception("This directory does not exist or is unreadable: " . $this->directory);
 	}
 	
 	$this->dm = $this->container->get('doctrine.odm.mongodb.document_manager');
-	$this->scan_directory($directory);
+	$this->scan_directory($this->directory);
 
     }
 
 	public function scan_directory($dir_name){
 		$subdirs = scandir($dir_name);
 		foreach($subdirs as $subdir_name){
-			if($subdir_name == '.' || $subdir_name == '..'){
+			if($subdir_name == '.' || $subdir_name == '..' || $subdir_name[0] == '.'){
 				continue;
 			}
 			$subdir_name = $dir_name .  DIRECTORY_SEPARATOR . $subdir_name;
@@ -69,11 +72,12 @@ class IndexCommand extends Command{
 
 	public function saveScanned($file_name){
 		if(is_readable($file_name)){
-	                $f = new \Application\IndexBundle\Document\File();
-        	        $f->source = file_get_contents($file_name);
-			$f->path = $file_name;
-			$this->dm->persist($f);
-			$this->dm->flush();
+	               		$f = new \Application\IndexBundle\Document\File();
+        		        $f->source = utf8_encode(file_get_contents($file_name));
+				$f->path = $file_name;
+				echo substr($f->path, strlen($this->directory)) . "\n";
+				$this->dm->persist($f);
+				$this->dm->flush();
 		}
 	}
 	
